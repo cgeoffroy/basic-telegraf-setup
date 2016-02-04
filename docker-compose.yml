@@ -1,0 +1,42 @@
+telegraf:
+  image: cgeoffroy/telegraf
+  environment:
+    HOST_PROC: /rootfs/proc
+    HOST_SYS: /rootfs/sys
+  net: "host"
+  volumes:
+    - "./telegraf.conf:/telegraf.conf:ro"
+    - "/sys:/rootfs/sys:ro"
+    - "/proc:/rootfs/proc:ro"
+    - "/var/run/docker.sock:/var/run/docker.sock:ro"
+  entrypoint: /bin/sh
+  command: -c "sleep 10s && exec /usr/local/bin/telegraf -config /telegraf.conf"
+
+influxdb:
+  image: tutum/influxdb:0.9
+  environment:
+    PRE_CREATE_DB: telegraf
+    ADMIN_USER: foobar
+    UXDB_INIT_PWD: foobar
+  ports:
+    - "8086:8086"
+
+grafana:
+  image: "grafana/grafana:2.5.0"
+  links:
+    - "influxdb:influxdb"
+  environment:
+    GF_SECURITY_ADMIN_USER: foobar
+    GF_SECURITY_ADMIN_PASSWORD: foobar
+  ports:
+    - "3000:3000"
+
+bootstrap:
+  image: "alpine:latest"
+  links:
+    - "grafana:grafana"
+  volumes:
+    - "./bootstrap.sh:/bootstrap.sh:ro"
+    - "./system.json:/system.json:ro"
+  command: /bootstrap.sh
+
